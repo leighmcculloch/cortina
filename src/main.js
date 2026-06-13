@@ -106,8 +106,8 @@ GAME.start = function (opts) {
     var throttle = (keys['w'] || keys['ArrowUp']) ? 1 : 0;
     var brake = (keys['s'] || keys['ArrowDown']) ? 1 : 0;
     var steer = 0;
-    if (keys['a'] || keys['ArrowLeft']) steer += 1;
-    if (keys['d'] || keys['ArrowRight']) steer -= 1;
+    if (keys['a'] || keys['ArrowLeft']) steer -= 1;
+    if (keys['d'] || keys['ArrowRight']) steer += 1;
     var handbrake = !!keys[' '];
     if (countdown > 0) { throttle = 0; brake = 1; steer = 0; handbrake = false; }
     var input = {
