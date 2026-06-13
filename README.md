@@ -42,6 +42,20 @@ Three.js loads from a CDN, so you need an internet connection on first load.
 - **Integration** (`src/main.js`): scene, lighting & shadows, cameras, input, lap timing,
   engine audio, game loop.
 
+## Deploy (Cloudflare Workers)
+
+The game is fully static (client-side only), so it deploys as a **static-assets-only
+Worker** — no Worker script, no backend. Config lives in `wrangler.toml`.
+
+```bash
+npm install        # gets wrangler
+npx wrangler deploy
+```
+
+`wrangler.toml` points the asset directory at the repo root and `.assetsignore`
+keeps non-site files (config, tests, README) out of the deployment. Three.js still
+loads from a CDN; ask if you'd rather vendor it so the Worker serves everything itself.
+
 ## Tests
 
 `node qa/smoke.js` runs a headless integration smoke test (stubs Three.js, builds the

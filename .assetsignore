@@ -1,0 +1,11 @@
+# Files in the project root that should NOT be served as part of the site.
+.git
+.gitignore
+.assetsignore
+wrangler.toml
+package.json
+package-lock.json
+node_modules
+.wrangler
+qa
+README.md

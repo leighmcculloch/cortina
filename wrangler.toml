@@ -1,0 +1,10 @@
+# Cloudflare Workers — static-assets-only deployment.
+# The game is 100% client-side, so there is no Worker script (`main`); Workers
+# just serves the files in `directory` from the edge.
+# Deploy with:  npx wrangler deploy
+name = "cortina"
+compatibility_date = "2026-06-13"
+
+[assets]
+directory = "."
+# Served at "/"; unknown paths fall back to a 404 (default). Not an SPA.

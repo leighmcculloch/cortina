@@ -1,0 +1,14 @@
+{
+  "name": "cortina",
+  "version": "1.0.0",
+  "private": true,
+  "description": "1964 Ford Cortina time trial at Bathurst — browser Three.js racing sim",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node qa/smoke.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
