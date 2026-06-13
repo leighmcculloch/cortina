@@ -79,3 +79,7 @@ loads from a CDN; ask if you'd rather vendor it so the Worker serves everything 
 `node qa/smoke.js` runs a headless integration smoke test (stubs Three.js, builds the
 track + car, drives the physics, and asserts no NaN / car accelerates / shifts gears /
 sits on the road surface / track queries are sane).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
