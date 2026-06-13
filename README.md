@@ -2,7 +2,8 @@
 
 A browser 3D racing **simulation**: drive a 1964 Ford Cortina Mk1 painted *True Blue*
 in a solo time trial around a faithful recreation of the **Mount Panorama Circuit
-(Bathurst)**. Built with Three.js, no build step.
+(Bathurst)** — a ~6.1 km lap with ~180 m of elevation change. Built with Three.js,
+no build step, no backend.
 
 ## Run
 
@@ -32,15 +33,32 @@ Three.js loads from a CDN, so you need an internet connection on first load.
   transfer, engine torque curve → 5-speed gearbox, wheelspin, front-biased braking with
   lock-up, handbrake rear-lock, drag, surface grip (grass vs tarmac) and punishing wall
   collisions.
-- **The track** (`src/track.js`): the real corner sequence and ~175 m elevation profile —
-  Hell Corner, Mountain Straight, Griffins Bend, The Cutting, across the top (Sulman,
-  McPhillamy, Skyline), down through The Esses and The Dipper, Forrest's Elbow, Conrod
-  Straight, The Chase, Murray's Corner. Provides the physics surface-query API.
+- **The track** (`src/track.js`): the real corner sequence over a 6.1 km lap with a
+  ~180 m elevation profile — Hell Corner, Mountain Straight, Griffins Bend, The Cutting,
+  across the top (Sulman, McPhillamy, Skyline), down through The Esses and The Dipper,
+  Forrest's Elbow, Conrod Straight, The Chase, Murray's Corner. Track narrows through the
+  mountain section, with walls close to the edge. Provides the physics surface-query API.
 - **The car** (`src/car.js`): low-poly True Blue Cortina Mk1, right-hand drive, with
   steerable front wheels.
 - **HUD** (`src/hud.js`): canvas speedo & tacho, gear, live lap / best / last / delta timing.
 - **Integration** (`src/main.js`): scene, lighting & shadows, cameras, input, lap timing,
   engine audio, game loop.
+
+## Project layout
+
+```
+index.html      entry point: loads Three.js (CDN) + the modules, boot/start screen
+src/car.js      True Blue Cortina Mk1 model (procedural, low-poly)
+src/track.js    Bathurst geometry, scenery, and the physics surface-query API
+src/vehicle.js  the simulation: tyres, weight transfer, gearbox, collisions
+src/hud.js      speedo/tacho gauges, gear, lap/best/last/delta timing
+src/main.js     integrator: scene, lights, cameras, input, lap timing, audio, loop
+qa/smoke.js     headless integration test
+wrangler.toml   Cloudflare Workers (static-assets-only) deploy config
+```
+
+Each `src/*.js` is a plain script that attaches to a shared `window.GAME` namespace —
+no bundler, no imports.
 
 ## Deploy (Cloudflare Workers)
 
