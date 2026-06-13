@@ -21,9 +21,12 @@ Vec.prototype.copy = function (v) { this.x = v.x; this.y = v.y; this.z = v.z; re
 
 function Obj3D() {
   this.position = new Vec(); this.rotation = new Vec(); this.scale = new Vec().set(1, 1, 1);
+  this.quaternion = new Vec(); this.matrix = new Mat4();
   this.children = []; this.userData = {}; this.castShadow = false; this.receiveShadow = false;
 }
 Obj3D.prototype.add = function () { for (var i = 0; i < arguments.length; i++) this.children.push(arguments[i]); return this; };
+Obj3D.prototype.updateMatrix = function () { return this; };
+Obj3D.prototype.updateMatrixWorld = function () { return this; };
 Obj3D.prototype.traverse = function (cb) { cb(this); this.children.forEach(function (c) { c.traverse ? c.traverse(cb) : cb(c); }); };
 
 function Geo() {}
@@ -46,6 +49,10 @@ const THREE = {
   Object3D: function () { Obj3D.call(this); },
   Mesh: function (g, m) { Obj3D.call(this); this.geometry = g; this.material = m; },
   Line: function (g, m) { Obj3D.call(this); this.geometry = g; this.material = m; },
+  InstancedMesh: function (g, m, count) {
+    Obj3D.call(this); this.geometry = g; this.material = m; this.count = count;
+    this.instanceMatrix = { needsUpdate: false };
+  },
   BoxGeometry: function () { Geo.call(this); },
   CylinderGeometry: function () { Geo.call(this); },
   PlaneGeometry: function () { Geo.call(this); },
@@ -60,13 +67,18 @@ const THREE = {
   MeshLambertMaterial: function (o) { Mat.call(this); Object.assign(this, o || {}); },
   LineBasicMaterial: function (o) { Mat.call(this); Object.assign(this, o || {}); },
   Color: function () { this.r = 1; this.g = 1; this.b = 1; },
+  CanvasTexture: function (img) { this.image = img; this.needsUpdate = false; this.wrapS = 0; this.wrapT = 0; },
+  Texture: function (img) { this.image = img; this.needsUpdate = false; },
   Vector3: function (x, y, z) { Vec.call(this); if (x !== undefined) this.set(x, y || 0, z || 0); },
   Matrix4: function () { Mat4.call(this); },
   DoubleSide: 2, FrontSide: 0,
 };
-[THREE.Group, THREE.Object3D, THREE.Mesh, THREE.Line].forEach(function (C) {
+[THREE.Group, THREE.Object3D, THREE.Mesh, THREE.Line, THREE.InstancedMesh].forEach(function (C) {
   C.prototype = Object.create(Obj3D.prototype);
 });
+THREE.InstancedMesh.prototype.setMatrixAt = function () { return this; };
+THREE.InstancedMesh.prototype.getMatrixAt = function () { return this; };
+THREE.InstancedMesh.prototype.setColorAt = function () { return this; };
 [THREE.BoxGeometry, THREE.CylinderGeometry, THREE.PlaneGeometry, THREE.TorusGeometry,
  THREE.ConeGeometry, THREE.SphereGeometry, THREE.BufferGeometry].forEach(function (C) {
   C.prototype = Object.create(Geo.prototype);

@@ -30,26 +30,36 @@ GAME.start = function (opts) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+  if ('toneMapping' in renderer) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+  }
   gameEl.appendChild(renderer.domElement);
 
   // ── Scene, sky, fog ─────────────────────────────────────────────────────
   var scene = new THREE.Scene();
-  var skyColor = 0x9cc2ec;
-  scene.background = new THREE.Color(skyColor);
-  scene.fog = new THREE.Fog(skyColor, 600, 2400);
+  var horizonColor = 0xcddcee;                 // hazy horizon, matches distant ranges
+  scene.background = new THREE.Color(0x8ab4e8);
+  scene.fog = new THREE.Fog(horizonColor, 900, 3600);
+  addSky(THREE, scene);                          // gradient dome + scattered clouds
 
   // ── Lighting ────────────────────────────────────────────────────────────
-  var hemi = new THREE.HemisphereLight(0xbcd6ff, 0x4a6b3a, 0.85);
+  var hemi = new THREE.HemisphereLight(0xcfe2ff, 0x4f6a3a, 0.65);
   scene.add(hemi);
-  var sun = new THREE.DirectionalLight(0xfff4e0, 1.15);
-  sun.position.set(-400, 650, 300);
+  var sun = new THREE.DirectionalLight(0xfff1dc, 2.2);   // bright midday sun
+  sun.position.set(-420, 720, 280);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   var sc = sun.shadow.camera;
-  sc.near = 50; sc.far = 1800; sc.left = -250; sc.right = 250; sc.top = 250; sc.bottom = -250;
+  sc.near = 50; sc.far = 1800; sc.left = -260; sc.right = 260; sc.top = 260; sc.bottom = -260;
   sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.6;
   scene.add(sun);
   scene.add(sun.target);
+  // gentle warm fill from the opposite side to lift shadow contrast
+  var fill = new THREE.DirectionalLight(0xbcd0ec, 0.35);
+  fill.position.set(380, 400, -260);
+  scene.add(fill);
 
   // ── Track (visuals + physics query API) ─────────────────────────────────
   var track = GAME.buildTrack(THREE);
@@ -345,4 +355,86 @@ GAME.start = function (opts) {
   updateCamera(0.016);
   hud.setMessage('GET READY', 1200);
   requestAnimationFrame(frame);
+
+  // ── Sky: vertical gradient dome + soft cloud billboards ───────────────────
+  function addSky(THREE, scene) {
+    var uniforms = {
+      topColor:    { value: new THREE.Color(0x2b6fc6) },  // deep blue overhead
+      midColor:    { value: new THREE.Color(0x86b6ec) },  // mid sky
+      bottomColor: { value: new THREE.Color(0xdce8f4) }   // hazy horizon
+    };
+    var geo = new THREE.SphereGeometry(3200, 32, 16);
+    var mat = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
+      vertexShader: [
+        'varying vec3 vWorldPos;',
+        'void main() {',
+        '  vec4 wp = modelMatrix * vec4(position, 1.0);',
+        '  vWorldPos = wp.xyz;',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform vec3 topColor; uniform vec3 midColor; uniform vec3 bottomColor;',
+        'varying vec3 vWorldPos;',
+        'void main() {',
+        '  float h = normalize(vWorldPos).y;',
+        '  float up = clamp(h, 0.0, 1.0);',
+        '  float dn = clamp(-h, 0.0, 1.0);',
+        '  vec3 col = mix(midColor, topColor, pow(up, 0.5));',
+        '  col = mix(col, bottomColor, pow(dn, 0.25));',
+        '  gl_FragColor = vec4(col, 1.0);',
+        '}'
+      ].join('\n')
+    });
+    var sky = new THREE.Mesh(geo, mat);
+    sky.renderOrder = -1;
+    scene.add(sky);
+    addClouds(THREE, scene);
+  }
+
+  function addClouds(THREE, scene) {
+    var tex = makeCloudTexture(THREE);
+    if (!tex) return;
+    var mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, opacity: 0.9, depthWrite: false, fog: false
+    });
+    var group = new THREE.Group();
+    for (var i = 0; i < 16; i++) {
+      var s = 380 + Math.random() * 520;
+      var plane = new THREE.Mesh(new THREE.PlaneGeometry(s, s * 0.6), mat);
+      var ang = Math.random() * Math.PI * 2;
+      var rad = 600 + Math.random() * 1900;
+      plane.position.set(Math.cos(ang) * rad, 620 + Math.random() * 360, Math.sin(ang) * rad);
+      plane.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.25; // mostly facing down
+      plane.rotation.z = Math.random() * Math.PI;
+      group.add(plane);
+    }
+    group.renderOrder = 0;
+    scene.add(group);
+  }
+
+  function makeCloudTexture(THREE) {
+    if (typeof document === 'undefined') return null;
+    var c = document.createElement('canvas');
+    c.width = c.height = 256;
+    var ctx = c.getContext('2d');
+    if (!ctx) return null;
+    // a few overlapping soft white blobs -> fluffy cumulus
+    for (var i = 0; i < 9; i++) {
+      var x = 60 + Math.random() * 136, y = 90 + Math.random() * 76;
+      var r = 30 + Math.random() * 46;
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.6, 'rgba(255,255,255,0.55)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    var t = new THREE.CanvasTexture(c);
+    return t;
+  }
 };

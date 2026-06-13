@@ -58,8 +58,8 @@ window.GAME.buildTrack = function (THREE) {
     //     "left" for a +X-facing car is toward +Z, which is heading increase.)
     // ─────────────────────────────────────────────────────────────────────
 
-    var WIDE = 11.0;   // flats / Conrod / Pit straight
-    var MOUNT = 7.5;   // narrow mountain top section
+    var WIDE = 15.0;   // flats / Conrod / Pit straight (widened)
+    var MOUNT = 11.0;  // narrow mountain top / Esses section (widened)
 
     // Each segment:
     //   {type:'straight', len, grade, width}
@@ -75,17 +75,17 @@ window.GAME.buildTrack = function (THREE) {
         // Mountain Straight — long climb.
         { type: 'straight', len: 870, grade: 0.090, width: WIDE },
         // Griffins Bend — right, still climbing.
-        { type: 'arc', radius: 80, sweep: -1.45, grade: 0.078, width: 10.5 },
+        { type: 'arc', radius: 80, sweep: -1.45, grade: 0.078, width: 14.0 },
         // short link
-        { type: 'straight', len: 220, grade: 0.100, width: 10.0 },
+        { type: 'straight', len: 220, grade: 0.100, width: 13.5 },
         // The Cutting — steep left climb (the steepest grade on the lap).
-        { type: 'arc', radius: 42, sweep: 1.55, grade: 0.165, width: 9.0 },
+        { type: 'arc', radius: 42, sweep: 1.55, grade: 0.165, width: 12.5 },
         // Climb toward Reid Park.
-        { type: 'straight', len: 210, grade: 0.130, width: 9.0 },
+        { type: 'straight', len: 210, grade: 0.130, width: 12.5 },
         // Reid Park — right kink.
-        { type: 'arc', radius: 110, sweep: -0.85, grade: 0.085, width: 8.5 },
+        { type: 'arc', radius: 110, sweep: -0.85, grade: 0.085, width: 12.0 },
         // Quarry Corner — left.
-        { type: 'arc', radius: 70, sweep: 1.05, grade: 0.055, width: 8.0 },
+        { type: 'arc', radius: 70, sweep: 1.05, grade: 0.055, width: 11.5 },
         // Sulman Park run, easing the climb.
         { type: 'straight', len: 250, grade: 0.045, width: MOUNT },
         // McPhillamy Park — long right sweep along the top ridge.
@@ -99,14 +99,14 @@ window.GAME.buildTrack = function (THREE) {
         // …then left, dropping fast.
         { type: 'arc', radius: 55, sweep: 1.05, grade: -0.180, width: MOUNT },
         // The Dipper — tight off-camber left, steep descent.
-        { type: 'arc', radius: 40, sweep: 1.35, grade: -0.200, width: 7.0 },
+        { type: 'arc', radius: 40, sweep: 1.35, grade: -0.200, width: 10.5 },
         // link down toward Forrest's Elbow
-        { type: 'straight', len: 130, grade: -0.170, width: 7.5 },
+        { type: 'straight', len: 130, grade: -0.170, width: 11.0 },
         // Forrest's Elbow — left, onto Conrod.
-        { type: 'arc', radius: 50, sweep: 1.10, grade: -0.110, width: 8.5 },
+        { type: 'arc', radius: 50, sweep: 1.10, grade: -0.110, width: 12.0 },
         // Conrod Straight — long, downhill then flattening out. Split in three
         // to taper the grade from steep to flat.
-        { type: 'straight', len: 700, grade: -0.090, width: 10.0 },
+        { type: 'straight', len: 700, grade: -0.090, width: 13.5 },
         { type: 'straight', len: 880, grade: -0.035, width: WIDE },
         { type: 'straight', len: 640, grade: -0.006, width: WIDE },
         // The Chase — chicane: right then left.
@@ -256,7 +256,7 @@ window.GAME.buildTrack = function (THREE) {
     // ─────────────────────────────────────────────────────────────────────
     // 4. PHYSICS QUERY
     // ─────────────────────────────────────────────────────────────────────
-    var WALL_MARGIN = 1.5; // wall sits this far outside the road edge
+    var WALL_MARGIN = 2.0; // wall sits this far outside the (now wider) road edge
 
     function query(qx, qz) {
         if (!isFinite(qx) || !isFinite(qz)) { qx = pts[0].x; qz = pts[0].z; }
@@ -397,7 +397,7 @@ window.GAME.buildTrack = function (THREE) {
         geo.setIndex(indices);
         geo.computeVertexNormals();
         var mat = new THREE.MeshStandardMaterial({
-            color: 0x2a2c30, roughness: 0.95, metalness: 0.0
+            color: 0x121214, roughness: 0.85, metalness: 0.0
         });
         var mesh = new THREE.Mesh(geo, mat);
         mesh.receiveShadow = true;
@@ -408,7 +408,7 @@ window.GAME.buildTrack = function (THREE) {
     // ── Edge lines + start/finish ────────────────────────────────────────
     (function buildLines() {
         var N = pts.length;
-        var lineMat = new THREE.LineBasicMaterial({ color: 0xf2f2f2 });
+        var lineMat = new THREE.LineBasicMaterial({ color: 0xffffff });
         for (var side = -1; side <= 1; side += 2) {
             var verts = [];
             for (var i = 0; i <= N; i++) {
@@ -433,102 +433,479 @@ window.GAME.buildTrack = function (THREE) {
         group.add(sf);
     })();
 
-    // ── Grass ground plane ───────────────────────────────────────────────
+    // ── Track bounds (shared by grass / scenery placement) ────────────────
+    var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (var bi = 0; bi < pts.length; bi++) {
+        if (pts[bi].x < minX) minX = pts[bi].x; if (pts[bi].x > maxX) maxX = pts[bi].x;
+        if (pts[bi].z < minZ) minZ = pts[bi].z; if (pts[bi].z > maxZ) maxZ = pts[bi].z;
+    }
+    var midX = (minX + maxX) / 2, midZ = (minZ + maxZ) / 2;
+
+    // ── Grass ground: large two-tone lush green base + patchwork verges ───
     (function buildGrass() {
-        // bounds
-        var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-        for (var i = 0; i < pts.length; i++) {
-            if (pts[i].x < minX) minX = pts[i].x; if (pts[i].x > maxX) maxX = pts[i].x;
-            if (pts[i].z < minZ) minZ = pts[i].z; if (pts[i].z > maxZ) maxZ = pts[i].z;
-        }
-        var pad = 200;
+        var pad = 320;
         var w = (maxX - minX) + pad * 2, d = (maxZ - minZ) + pad * 2;
-        var geo = new THREE.PlaneGeometry(w, d);
-        var mat = new THREE.MeshStandardMaterial({ color: 0x3f6b35, roughness: 1.0 });
-        var grass = new THREE.Mesh(geo, mat);
+        // Base plane — lush natural green.
+        var geo = new THREE.PlaneGeometry(w, d, 1, 1);
+        var matA = new THREE.MeshStandardMaterial({ color: 0x4f7a2f, roughness: 1.0 });
+        var grass = new THREE.Mesh(geo, matA);
         grass.rotation.x = -Math.PI / 2;
-        grass.position.set((minX + maxX) / 2, -0.05, (minZ + maxZ) / 2);
+        grass.position.set(midX, -0.08, midZ);
         grass.receiveShadow = true;
         grass.name = 'grass';
         group.add(grass);
+
+        // Subtly different green patches scattered over the infield/verges to
+        // break up the flat colour. Share one geometry + material.
+        var patchGeo = new THREE.PlaneGeometry(1, 1);
+        var matB = new THREE.MeshStandardMaterial({ color: 0x5d8c39, roughness: 1.0 });
+        var patches = new THREE.InstancedMesh(patchGeo, matB, 90);
+        var dummy = new THREE.Object3D();
+        var seed = 1337;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+        for (var i = 0; i < 90; i++) {
+            var px = midX + (rnd() - 0.5) * (w * 0.9);
+            var pz = midZ + (rnd() - 0.5) * (d * 0.9);
+            var sc = 40 + rnd() * 120;
+            dummy.position.set(px, -0.06, pz);
+            dummy.rotation.set(-Math.PI / 2, 0, rnd() * Math.PI);
+            dummy.scale.set(sc, sc * (0.6 + rnd() * 0.8), 1);
+            dummy.updateMatrix();
+            patches.setMatrixAt(i, dummy.matrix);
+        }
+        patches.name = 'grassPatches';
+        group.add(patches);
     })();
 
+    // Helper: is this centerline point on the tight, high mountain section?
+    var mountainThresh = minY + (maxY - minY) * 0.45;
+    function isMountainPt(pt) { return pt.y > mountainThresh; }
+
     // ── Walls & barriers ─────────────────────────────────────────────────
-    // Mountain section (segments roughly from The Cutting through The Dipper)
-    // gets close concrete walls; elsewhere low Armco-style barriers, sparser.
+    // Mountain section gets close concrete walls (dark base, white capping);
+    // the flats/straights get steel Armco guardrail with sponsor boards.
     (function buildWalls() {
-        var wallMat = new THREE.MeshStandardMaterial({ color: 0xb9b6ad, roughness: 0.9 });
-        var armcoMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.6, metalness: 0.4 });
-
-        // Determine "mountain" range by distance: from end of Mountain Straight
-        // climb up to Forrest's Elbow. Approx by elevation: high portions.
         var N = pts.length;
-        var wallH = 0.9, armcoH = 0.5, segLen = 8.0;
 
-        // place a box every `segLen` along an edge, oriented to heading.
-        function placeRow(side, useWall, step) {
-            var mat = useWall ? wallMat : armcoMat;
-            var hgt = useWall ? wallH : armcoH;
-            var margin = WALL_MARGIN;
+        // --- Concrete walls (mountain) : dark base box + white top cap. ---
+        var wallBaseMat = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.95 });
+        var wallCapMat = new THREE.MeshStandardMaterial({ color: 0xeef0f2, roughness: 0.85 });
+        var wallH = 0.95, capH = 0.18, wallStep = 8.0, wallThick = 0.3;
+        var wallBaseGeo = new THREE.BoxGeometry(wallStep, wallH, wallThick);
+        var wallCapGeo = new THREE.BoxGeometry(wallStep, capH, wallThick + 0.06);
+
+        function placeWall(side) {
             var i = 0;
             while (i < N) {
                 var pt = pts[i];
-                // wall only on the tight mountain section, barriers elsewhere.
-                var isMountain = pt.y > (minY + (maxY - minY) * 0.45);
-                if (useWall !== isMountain) { i += 1; continue; }
+                if (!isMountainPt(pt)) { i += 1; continue; }
                 var rx = Math.sin(pt.heading), rz = -Math.cos(pt.heading);
-                var off = pt.width * 0.5 + margin;
-                var box = new THREE.Mesh(
-                    new THREE.BoxGeometry(step, hgt, 0.3), mat
-                );
-                box.position.set(
-                    pt.x + rx * off * side,
-                    pt.y + hgt * 0.5,
-                    pt.z + rz * off * side
-                );
-                box.rotation.y = -pt.heading;
-                box.castShadow = true;
-                box.receiveShadow = true;
-                group.add(box);
-                i += Math.max(1, Math.round(step / STEP));
+                var off = pt.width * 0.5 + WALL_MARGIN;
+                var bx = pt.x + rx * off * side, bz = pt.z + rz * off * side;
+                var base = new THREE.Mesh(wallBaseGeo, wallBaseMat);
+                base.position.set(bx, pt.y + wallH * 0.5, bz);
+                base.rotation.y = -pt.heading;
+                base.castShadow = true; base.receiveShadow = true;
+                group.add(base);
+                var cap = new THREE.Mesh(wallCapGeo, wallCapMat);
+                cap.position.set(bx, pt.y + wallH + capH * 0.5, bz);
+                cap.rotation.y = -pt.heading;
+                group.add(cap);
+                i += Math.max(1, Math.round(wallStep / STEP));
             }
         }
-        placeRow(+1, true, segLen);
-        placeRow(-1, true, segLen);
-        placeRow(+1, false, segLen * 2); // sparser barriers on flats
-        placeRow(-1, false, segLen * 2);
+        placeWall(+1); placeWall(-1);
+
+        // --- Armco guardrail (flats) : steel rail + posts + sponsor boards. ---
+        var railMat = new THREE.MeshStandardMaterial({ color: 0xc7ccd1, roughness: 0.45, metalness: 0.6 });
+        var postMat = new THREE.MeshStandardMaterial({ color: 0x6b7077, roughness: 0.7, metalness: 0.4 });
+        var armStep = 14.0, railH = 0.55;
+        var railGeo = new THREE.BoxGeometry(armStep, 0.28, 0.12);
+        var postGeo = new THREE.BoxGeometry(0.12, railH, 0.12);
+        // A few sponsor-board colours to cycle through.
+        var boardMats = [
+            new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7 }),
+            new THREE.MeshStandardMaterial({ color: 0x1c63b8, roughness: 0.7 }),
+            new THREE.MeshStandardMaterial({ color: 0xf2c014, roughness: 0.7 }),
+            new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.7 }),
+            new THREE.MeshStandardMaterial({ color: 0x21a35a, roughness: 0.7 })
+        ];
+        var boardGeo = new THREE.BoxGeometry(armStep, 0.7, 0.06);
+
+        function placeArmco(side) {
+            var i = 0, boardCount = 0;
+            while (i < N) {
+                var pt = pts[i];
+                if (isMountainPt(pt)) { i += 1; continue; }
+                var rx = Math.sin(pt.heading), rz = -Math.cos(pt.heading);
+                var off = pt.width * 0.5 + WALL_MARGIN;
+                var bx = pt.x + rx * off * side, bz = pt.z + rz * off * side;
+                var rail = new THREE.Mesh(railGeo, railMat);
+                rail.position.set(bx, pt.y + railH, bz);
+                rail.rotation.y = -pt.heading;
+                rail.castShadow = true; rail.receiveShadow = true;
+                group.add(rail);
+                var post = new THREE.Mesh(postGeo, postMat);
+                post.position.set(bx, pt.y + railH * 0.5, bz);
+                post.rotation.y = -pt.heading;
+                group.add(post);
+                // sponsor board behind the rail, every other panel.
+                if ((boardCount++ & 1) === 0) {
+                    var board = new THREE.Mesh(boardGeo, boardMats[(boardCount >> 1) % boardMats.length]);
+                    var boff = off + 0.25;
+                    board.position.set(
+                        pt.x + rx * boff * side,
+                        pt.y + railH + 0.55,
+                        pt.z + rz * boff * side
+                    );
+                    board.rotation.y = -pt.heading;
+                    group.add(board);
+                }
+                i += Math.max(1, Math.round(armStep / STEP));
+            }
+        }
+        placeArmco(+1); placeArmco(-1);
     })();
 
-    // ── Grandstands near Pit Straight ────────────────────────────────────
-    (function buildGrandstands() {
-        var standMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.85 });
-        var p0 = pts[0];
-        for (var s = 0; s < 3; s++) {
-            var d = 40 + s * 90;
-            var c = sampleByDistance(d);
+    // ── Red-and-white ripple kerbs at corner apexes/exits ─────────────────
+    (function buildKerbs() {
+        var redMat = new THREE.MeshStandardMaterial({ color: 0xc62828, roughness: 0.8 });
+        var whiteMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.8 });
+        var stripLen = 1.4, kerbW = 0.9;
+        var redGeo = new THREE.BoxGeometry(stripLen, 0.10, kerbW);
+        var whiteGeo = new THREE.BoxGeometry(stripLen, 0.10, kerbW);
+        var N = pts.length;
+        // Lay alternating strips on BOTH edges through the curvier points
+        // (heading change between neighbours indicates a corner).
+        var stripIdx = 0;
+        for (var i = 0; i < N; i++) {
+            var pt = pts[i];
+            var nxt = pts[(i + 1) % N];
+            var dh = Math.atan2(Math.sin(nxt.heading - pt.heading), Math.cos(nxt.heading - pt.heading));
+            if (Math.abs(dh) < 0.012) continue; // straightish → skip
+            var rx = Math.sin(pt.heading), rz = -Math.cos(pt.heading);
+            for (var side = -1; side <= 1; side += 2) {
+                var off = pt.width * 0.5 + kerbW * 0.5 - 0.15;
+                var mat = (stripIdx & 1) ? whiteMat : redMat;
+                var geo = (stripIdx & 1) ? whiteGeo : redGeo;
+                var k = new THREE.Mesh(geo, mat);
+                k.position.set(pt.x + rx * off * side, pt.y + 0.05, pt.z + rz * off * side);
+                k.rotation.y = -pt.heading;
+                k.receiveShadow = true;
+                group.add(k);
+            }
+            stripIdx++;
+        }
+    })();
+
+    // ── Tyre-bundle barriers (rings of dark tyres) at a few corners ───────
+    (function buildTyreStacks() {
+        var tyreMat = new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.95 });
+        var tyreGeo = new THREE.TorusGeometry(0.42, 0.20, 6, 10);
+        // Choose corner apex distances around the lap.
+        var spots = [0.10, 0.27, 0.46, 0.58, 0.72, 0.88];
+        for (var s = 0; s < spots.length; s++) {
+            var c = sampleByDistance(LENGTH * spots[s]);
             var rx = Math.sin(c.heading), rz = -Math.cos(c.heading);
-            var off = c.width * 0.5 + 14;
-            var stand = new THREE.Mesh(new THREE.BoxGeometry(60, 10, 16), standMat);
-            stand.position.set(c.x - rx * off, c.y + 5, c.z - rz * off);
-            stand.rotation.y = -c.heading;
+            var off = c.width * 0.5 + WALL_MARGIN + 1.2;
+            var bx = c.x + rx * off, bz = c.z + rz * off;
+            // a small bundle: a few stacks side by side, two tyres high.
+            for (var col = 0; col < 4; col++) {
+                var along = (col - 1.5) * 0.95;
+                var tx = bx + Math.cos(c.heading) * along;
+                var tz = bz + Math.sin(c.heading) * along;
+                for (var row = 0; row < 2; row++) {
+                    var t = new THREE.Mesh(tyreGeo, tyreMat);
+                    t.position.set(tx, c.y + 0.22 + row * 0.42, tz);
+                    t.rotation.x = Math.PI / 2; // lay flat (hole up)
+                    t.castShadow = true;
+                    group.add(t);
+                }
+            }
+        }
+    })();
+
+    // ── Pit-straight complex: garages, pit wall, control tower, grandstands ─
+    // Convention here: LEFT of racing direction (side = -1) is the pit/paddock
+    // side; RIGHT (side = +1) holds the spectator grandstands.
+    (function buildPitStraight() {
+        function at(d) { return sampleByDistance(((d % LENGTH) + LENGTH) % LENGTH); }
+
+        // --- Row of pit garages (left side, just behind a low pit wall). ---
+        var garageBodyMat = new THREE.MeshStandardMaterial({ color: 0xdadee2, roughness: 0.85 });
+        var garageRoofMat = new THREE.MeshStandardMaterial({ color: 0x394049, roughness: 0.8 });
+        var pitWallMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.8 });
+        var garageGeo = new THREE.BoxGeometry(8, 5, 12);
+        var garageRoofGeo = new THREE.BoxGeometry(8.4, 0.5, 12.4);
+        for (var g = 0; g < 8; g++) {
+            var d = 70 + g * 9;
+            var c = at(d);
+            var rx = Math.sin(c.heading), rz = -Math.cos(c.heading);
+            var off = c.width * 0.5 + 11;
+            var bx = c.x - rx * off, bz = c.z - rz * off;
+            var body = new THREE.Mesh(garageGeo, garageBodyMat);
+            body.position.set(bx, c.y + 2.5, bz);
+            body.rotation.y = -c.heading;
+            body.castShadow = true; body.receiveShadow = true;
+            group.add(body);
+            var roof = new THREE.Mesh(garageRoofGeo, garageRoofMat);
+            roof.position.set(bx, c.y + 5.25, bz);
+            roof.rotation.y = -c.heading;
+            group.add(roof);
+        }
+        // low pit wall between garages and track.
+        var pitWallGeo = new THREE.BoxGeometry(80, 1.0, 0.4);
+        for (var pw = 0; pw < 1; pw++) {
+            var cw = at(70 + 3.5 * 9);
+            var rxw = Math.sin(cw.heading), rzw = -Math.cos(cw.heading);
+            var offw = cw.width * 0.5 + WALL_MARGIN + 0.6;
+            var wall = new THREE.Mesh(pitWallGeo, pitWallMat);
+            wall.position.set(cw.x - rxw * offw, cw.y + 0.5, cw.z - rzw * offw);
+            wall.rotation.y = -cw.heading;
+            wall.receiveShadow = true;
+            group.add(wall);
+        }
+
+        // --- Multi-storey control tower near start/finish (left side). ---
+        var towerMat = new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.8 });
+        var towerGlassMat = new THREE.MeshStandardMaterial({ color: 0x2b3a4a, roughness: 0.3, metalness: 0.5 });
+        var ct = at(10);
+        var rxt = Math.sin(ct.heading), rzt = -Math.cos(ct.heading);
+        var offt = ct.width * 0.5 + 16;
+        var tbx = ct.x - rxt * offt, tbz = ct.z - rzt * offt;
+        var tower = new THREE.Mesh(new THREE.BoxGeometry(10, 18, 9), towerMat);
+        tower.position.set(tbx, ct.y + 9, tbz);
+        tower.rotation.y = -ct.heading;
+        tower.castShadow = true; tower.receiveShadow = true;
+        group.add(tower);
+        // glass band at the top (race control gallery).
+        var gallery = new THREE.Mesh(new THREE.BoxGeometry(10.4, 3.5, 9.4), towerGlassMat);
+        gallery.position.set(tbx, ct.y + 16, tbz);
+        gallery.rotation.y = -ct.heading;
+        group.add(gallery);
+
+        // --- Grandstand blocks (right side) with a suggestion of spectators. ---
+        var standMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.85 });
+        var roofMat = new THREE.MeshStandardMaterial({ color: 0xb0241f, roughness: 0.7 });
+        var seatGeo = new THREE.BoxGeometry(60, 8, 14);
+        var standRoofGeo = new THREE.BoxGeometry(62, 0.6, 17);
+        // Tiny instanced "spectators": pale dots speckling the seating bank.
+        var crowdGeo = new THREE.BoxGeometry(0.4, 0.5, 0.4);
+        var crowdMat = new THREE.MeshStandardMaterial({ color: 0xd9d2c4, roughness: 1.0 });
+        var seedC = 99;
+        function rc() { seedC = (seedC * 1103515245 + 12345) & 0x7fffffff; return seedC / 0x7fffffff; }
+        for (var s = 0; s < 3; s++) {
+            var ds = 60 + s * 95;
+            var cs = at(ds);
+            var rxs = Math.sin(cs.heading), rzs = -Math.cos(cs.heading);
+            var offs = cs.width * 0.5 + 16;
+            var sbx = cs.x + rxs * offs, sbz = cs.z + rzs * offs;
+            var stand = new THREE.Mesh(seatGeo, standMat);
+            stand.position.set(sbx, cs.y + 4, sbz);
+            stand.rotation.y = -cs.heading;
             stand.castShadow = true; stand.receiveShadow = true;
             group.add(stand);
+            var sroof = new THREE.Mesh(standRoofGeo, roofMat);
+            sroof.position.set(sbx, cs.y + 9, sbz - rzs * 0);
+            sroof.rotation.y = -cs.heading;
+            group.add(sroof);
+            // spectator dots across the front face of the stand.
+            var rows = 6, cols = 40, crowd = new THREE.InstancedMesh(crowdGeo, crowdMat, rows * cols);
+            var fwdX = Math.cos(cs.heading), fwdZ = Math.sin(cs.heading);
+            var n = 0, dummyc = new THREE.Object3D();
+            for (var r = 0; r < rows; r++) {
+                for (var co = 0; co < cols; co++) {
+                    var along = (co / (cols - 1) - 0.5) * 56;
+                    var hgt = cs.y + 1.5 + r * 1.0;
+                    var inset = 6.8 - r * 0.5; // tiered toward track
+                    var cxp = sbx + fwdX * along - rxs * inset;
+                    var czp = sbz + fwdZ * along - rzs * inset;
+                    // jitter so the crowd looks speckled, not gridded.
+                    dummyc.position.set(cxp + (rc() - 0.5) * 0.6, hgt + (rc() - 0.5) * 0.3, czp + (rc() - 0.5) * 0.6);
+                    dummyc.updateMatrix();
+                    crowd.setMatrixAt(n, dummyc.matrix);
+                    n++;
+                }
+            }
+            crowd.name = 'crowd';
+            group.add(crowd);
+        }
+
+        // --- Light poles (tall, curved-arm streetlights) along pit straight. ---
+        var poleMat = new THREE.MeshStandardMaterial({ color: 0x4a4d52, roughness: 0.6, metalness: 0.6 });
+        var lampMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, roughness: 0.4,
+            emissive: 0xfff2cc, emissiveIntensity: 0.6
+        });
+        var poleGeo = new THREE.CylinderGeometry(0.18, 0.22, 9, 8);
+        var armGeo = new THREE.CylinderGeometry(0.12, 0.12, 3, 8);
+        var lampGeo = new THREE.BoxGeometry(1.0, 0.25, 0.5);
+        for (var lp = 0; lp < 7; lp++) {
+            var dl = 50 + lp * 80;
+            var cl = at(dl);
+            var rxl = Math.sin(cl.heading), rzl = -Math.cos(cl.heading);
+            var offl = cl.width * 0.5 + 6;
+            var pbx = cl.x + rxl * offl, pbz = cl.z + rzl * offl; // right side
+            var pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.set(pbx, cl.y + 4.5, pbz);
+            pole.castShadow = true;
+            group.add(pole);
+            // curved arm reaching toward the track (-side direction).
+            var arm = new THREE.Mesh(armGeo, poleMat);
+            arm.position.set(pbx - rxl * 1.5, cl.y + 9, pbz - rzl * 1.5);
+            arm.rotation.z = Math.PI / 2;
+            arm.rotation.y = -cl.heading;
+            group.add(arm);
+            var lamp = new THREE.Mesh(lampGeo, lampMat);
+            lamp.position.set(pbx - rxl * 3, cl.y + 8.8, pbz - rzl * 3);
+            lamp.rotation.y = -cl.heading;
+            group.add(lamp);
         }
     })();
 
-    // ── Suggestion of the mountain ───────────────────────────────────────
+    // Centroid of the high mountain section (used by the hill + lettering).
+    var hillX = 0, hillZ = 0, hillCnt = 0;
+    for (var hi = 0; hi < pts.length; hi++) {
+        if (pts[hi].y > minY + (maxY - minY) * 0.7) { hillX += pts[hi].x; hillZ += pts[hi].z; hillCnt++; }
+    }
+    if (hillCnt > 0) { hillX /= hillCnt; hillZ /= hillCnt; } else { hillX = midX; hillZ = midZ; }
+
+    // ── The hill itself + the iconic MOUNT PANORAMA hillside lettering ─────
     (function buildMountain() {
-        // a big low-poly cone/hill placed near the high section centroid.
-        var hx = 0, hz = 0, cnt = 0;
-        for (var i = 0; i < pts.length; i++) {
-            if (pts[i].y > minY + (maxY - minY) * 0.7) { hx += pts[i].x; hz += pts[i].z; cnt++; }
-        }
-        if (cnt > 0) { hx /= cnt; hz /= cnt; }
-        var mat = new THREE.MeshStandardMaterial({ color: 0x4a5d3a, roughness: 1.0, flatShading: true });
-        var hill = new THREE.Mesh(new THREE.ConeGeometry(260, maxY + 40, 7), mat);
-        hill.position.set(hx, (maxY) / 2 - 5, hz);
+        var mat = new THREE.MeshStandardMaterial({ color: 0x4f6b3a, roughness: 1.0, flatShading: true });
+        var hill = new THREE.Mesh(new THREE.ConeGeometry(280, maxY + 50, 8), mat);
+        hill.position.set(hillX, (maxY) / 2 - 5, hillZ);
         hill.receiveShadow = true;
         group.add(hill);
+
+        // MOUNT PANORAMA lettering on a plane angled onto the hillside, facing
+        // back toward the circuit. CanvasTexture when a DOM exists; otherwise a
+        // plain white material fallback so the build never throws in Node.
+        var letterMat;
+        var canTex = null;
+        if (typeof document !== 'undefined') {
+            try {
+                var canvas = document.createElement('canvas');
+                canvas.width = 1024; canvas.height = 256;
+                var ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.clearRect(0, 0, 1024, 256);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 150px Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('MOUNT PANORAMA', 512, 128);
+                    canTex = new THREE.CanvasTexture(canvas);
+                }
+            } catch (e) { canTex = null; }
+        }
+        if (canTex) {
+            letterMat = new THREE.MeshBasicMaterial({ map: canTex, transparent: true });
+        } else {
+            letterMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        }
+        var sign = new THREE.Mesh(new THREE.PlaneGeometry(180, 45), letterMat);
+        // sit it up on the hillside, above the high section, tilted to the slope.
+        sign.position.set(hillX, maxY + 35, hillZ - 120);
+        sign.rotation.x = -Math.PI / 6;
+        sign.name = 'mountPanoramaSign';
+        group.add(sign);
+    })();
+
+    // ── Distant blue-grey ranges encircling the circuit on the horizon ────
+    (function buildRanges() {
+        var mat = new THREE.MeshStandardMaterial({
+            color: 0x6b7d94, roughness: 1.0, flatShading: true,
+            emissive: 0x2a3340, emissiveIntensity: 0.25
+        });
+        var rad = Math.max(maxX - minX, maxZ - minZ) * 0.5 + 900;
+        var ridges = 26;
+        var geo = new THREE.ConeGeometry(1, 1, 5); // unit cone, scaled per instance
+        var ranges = new THREE.InstancedMesh(geo, mat, ridges);
+        var dummy = new THREE.Object3D();
+        var seed = 7;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+        for (var i = 0; i < ridges; i++) {
+            var ang = (i / ridges) * Math.PI * 2 + rnd() * 0.15;
+            var rr = rad + (rnd() - 0.5) * 250;
+            var px = midX + Math.cos(ang) * rr;
+            var pz = midZ + Math.sin(ang) * rr;
+            var hgt = 220 + rnd() * 260;
+            var wid = 500 + rnd() * 500;
+            dummy.position.set(px, hgt * 0.5 - 40, pz);
+            dummy.rotation.set(0, rnd() * Math.PI, 0);
+            dummy.scale.set(wid, hgt, wid);
+            dummy.updateMatrix();
+            ranges.setMatrixAt(i, dummy.matrix);
+        }
+        ranges.name = 'ranges';
+        group.add(ranges);
+    })();
+
+    // ── Eucalyptus / gum trees (instanced trunks + canopies) ──────────────
+    (function buildTrees() {
+        // Shared geometry/material; two InstancedMeshes (trunks + canopies).
+        var trunkGeo = new THREE.CylinderGeometry(0.22, 0.34, 7, 6);
+        var canopyGeo = new THREE.SphereGeometry(2.4, 7, 6);
+        var trunkMat = new THREE.MeshStandardMaterial({ color: 0x8a8472, roughness: 0.95 });
+        var canopyMat = new THREE.MeshStandardMaterial({ color: 0x5a6e3a, roughness: 1.0 });
+
+        var COUNT = 340;
+        var trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, COUNT);
+        var canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, COUNT);
+        var dT = new THREE.Object3D(), dC = new THREE.Object3D();
+        var seed = 4242;
+        function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+        var N = pts.length, placed = 0;
+        // Most trees cluster along the mountain descent and Conrod; the rest
+        // scatter through the outfield. Walk the centerline, drop trees beyond
+        // the barriers, jittered, on alternating sides.
+        var guard = 0;
+        while (placed < COUNT && guard < COUNT * 12) {
+            guard++;
+            var i = (Math.floor(rnd() * N)) % N;
+            var pt = pts[i];
+            // density: mountain section + the back half (Conrod-ish) favoured.
+            var onMountain = isMountainPt(pt);
+            var keepProb = onMountain ? 0.95 : 0.55;
+            if (rnd() > keepProb) continue;
+            var side = rnd() < 0.5 ? -1 : 1;
+            var rx = Math.sin(pt.heading), rz = -Math.cos(pt.heading);
+            // distance out beyond the barrier; trees set back from the track.
+            var out = pt.width * 0.5 + WALL_MARGIN + 6 + rnd() * 60;
+            var jitterAlong = (rnd() - 0.5) * 10;
+            var fwdX = Math.cos(pt.heading), fwdZ = Math.sin(pt.heading);
+            var tx = pt.x + rx * out * side + fwdX * jitterAlong;
+            var tz = pt.z + rz * out * side + fwdZ * jitterAlong;
+            var ty = pt.y; // approximate ground at this centerline elevation
+            var sc = 0.7 + rnd() * 1.1; // vary scale
+            var rot = rnd() * Math.PI * 2;
+
+            dT.position.set(tx, ty + 3.5 * sc, tz);
+            dT.rotation.set(0, rot, 0);
+            dT.scale.set(sc, sc, sc);
+            dT.updateMatrix();
+            trunks.setMatrixAt(placed, dT.matrix);
+
+            dC.position.set(tx, ty + (7 + 1.6) * sc, tz);
+            dC.rotation.set(0, rot, 0);
+            // slightly squashed/elongated canopy for a gum-tree silhouette.
+            dC.scale.set(sc * (0.9 + rnd() * 0.4), sc * (1.1 + rnd() * 0.5), sc * (0.9 + rnd() * 0.4));
+            dC.updateMatrix();
+            canopies.setMatrixAt(placed, dC.matrix);
+            placed++;
+        }
+        // Hide any unused instances (if we somehow under-filled) by scaling to 0.
+        for (var u = placed; u < COUNT; u++) {
+            dT.position.set(0, -1000, 0); dT.scale.set(0.0001, 0.0001, 0.0001); dT.updateMatrix();
+            trunks.setMatrixAt(u, dT.matrix);
+            canopies.setMatrixAt(u, dT.matrix);
+        }
+        trunks.castShadow = true; canopies.castShadow = true;
+        trunks.name = 'treeTrunks'; canopies.name = 'treeCanopies';
+        group.add(trunks);
+        group.add(canopies);
     })();
 
     // ─────────────────────────────────────────────────────────────────────
